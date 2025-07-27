@@ -1,4 +1,10 @@
 ###################### OpenHands Configuration Example ######################
+# OpenHands local development config for MacOS with custom ports and workspace
+[core]
+# Use a custom workspace directory for local development
+workspace_base = "$HOME/workspace"
+
+
 #
 # All settings have default values, so you only need to uncomment and
 # modify what you want to change
@@ -16,7 +22,7 @@
 #workspace_base = "./workspace"
 
 # Cache directory path
-#cache_dir = "/tmp/cache"
+cache_dir = "$HOME/workspace/cache"
 
 # Debugging enabled
 #debug = false
@@ -26,28 +32,32 @@
 
 # Path to store trajectories, can be a folder or a file
 # If it's a folder, the session id will be used as the file name
-#save_trajectory_path="./trajectories"
+save_trajectory_path="$HOME/workspace/trajectories"
 
 # Whether to save screenshots in the trajectory
 # The screenshots are encoded and can make trajectory json files very large
-#save_screenshots_in_trajectory = false
+save_screenshots_in_trajectory = false
+
+[sandbox]
+# Use a custom volume mount for the workspace in the sandbox
+volumes = "$HOME/workspace:$HOME/workspace:rw"
 
 # Path to replay a trajectory, must be a file path
 # If provided, trajectory will be loaded and replayed before the
 # agent responds to any user instruction
-#replay_trajectory_path = ""
+replay_trajectory_path = "$HOME/workspace/replay_trajectory.json"
 
 # File store path
-#file_store_path = "/tmp/file_store"
+file_store_path = "$HOME/workspace/file_store"
 
 # File store type
-#file_store = "memory"
+file_store = "memory"
 
 # Maximum file size for uploads, in megabytes
 #file_uploads_max_file_size_mb = 0
 
 # Enable the browser environment
-#enable_browser = true
+enable_browser = true
 
 # Maximum budget per task, 0.0 means no limit
 #max_budget_per_task = 0.0
@@ -56,22 +66,22 @@
 #max_iterations = 500
 
 # Path to mount the workspace in the sandbox
-#workspace_mount_path_in_sandbox = "/workspace"
+workspace_mount_path_in_sandbox = "$HOME/workspace"
 
 # Path to mount the workspace
-#workspace_mount_path = ""
+workspace_mount_path = "$HOME/workspace"
 
 # Path to rewrite the workspace mount path to
-#workspace_mount_rewrite = ""
+workspace_mount_rewrite = "$HOME/workspace"
 
 # Run as openhands
 #run_as_openhands = true
 
 # Runtime environment
-#runtime = "docker"
+runtime = "local"
 
 # Name of the default agent
-#default_agent = "CodeActAgent"
+default_agent = "CodeActAgent"
 
 # JWT secret for authentication
 #jwt_secret = ""
@@ -91,7 +101,7 @@
 #max_concurrent_conversations = 3
 
 # Maximum age of conversations in seconds before they are automatically closed
-#conversation_max_age_seconds = 864000  # 10 days
+conversation_max_age_seconds = 864000  # 10 days
 
 #################################### LLM #####################################
 # Configuration for LLM models (group name starts with 'llm')
@@ -168,7 +178,7 @@ model = "gpt-4o"
 #caching_prompt = true
 
 # Base URL for the OLLAMA API
-#ollama_base_url = ""
+ollama_base_url = ""
 
 # Temperature for the API
 #temperature = 0.0
@@ -297,7 +307,7 @@ classpath = "my_package.my_module.MyCustomAgent"
 #runtime_extra_build_args = ["--network=host", "--add-host=host.docker.internal:host-gateway"]
 
 # Enable auto linting after editing
-#enable_auto_lint = false
+enable_auto_lint = false
 
 # Whether to initialize plugins
 #initialize_plugins = true
@@ -312,7 +322,7 @@ classpath = "my_package.my_module.MyCustomAgent"
 #browsergym_eval_env = ""
 
 # Platform to use for building the runtime image (e.g., "linux/amd64")
-#platform = ""
+platform = ""
 
 # Force rebuild of runtime image even if it exists
 #force_rebuild_runtime = false
@@ -324,13 +334,13 @@ classpath = "my_package.my_module.MyCustomAgent"
 #keep_runtime_alive = false
 
 # Pause closed runtimes instead of stopping them
-#pause_closed_runtimes = false
+pause_closed_runtimes = false
 
 # Delay in seconds before closing idle runtimes
 #close_delay = 300
 
 # Remove all containers when stopping the runtime
-#rm_all_containers = false
+rm_all_containers = false
 
 # Enable GPU support in the runtime
 #enable_gpu = false
@@ -343,7 +353,7 @@ classpath = "my_package.my_module.MyCustomAgent"
 
 # Specific port to use for VSCode. If not set, a random port will be chosen.
 # Useful when deploying OpenHands in a remote machine where you need to expose a specific port.
-#vscode_port = 41234
+vscode_port = 41234
 
 # Volume mounts in the format 'host_path:container_path[:mode]'
 # e.g. '/my/host/dir:/workspace:rw'
