@@ -373,10 +373,11 @@ vscode_port = 41234
 #confirmation_mode = false
 
 # The security analyzer to use (For Headless / CLI only -  In Web this is overridden by Session Init)
-#security_analyzer = ""
+# Available options: 'llm' (default), 'invariant'
+#security_analyzer = "llm"
 
 # Whether to enable security analyzer
-#enable_security_analyzer = false
+#enable_security_analyzer = true
 
 #################################### Condenser #################################
 # Condensers control how conversation history is managed and compressed when

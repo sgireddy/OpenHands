@@ -1,7 +1,10 @@
-import sys
-
 from litellm import ChatCompletionToolParam, ChatCompletionToolParamFunctionChunk
 
+from openhands.agenthub.codeact_agent.tools.prompt import refine_prompt
+from openhands.agenthub.codeact_agent.tools.security_utils import (
+    RISK_LEVELS,
+    SECURITY_RISK_DESC,
+)
 from openhands.llm.tool_names import EXECUTE_BASH_TOOL_NAME
 
 _DETAILED_BASH_DESCRIPTION = """Execute a bash command in the terminal within a persistent shell session.
@@ -35,12 +38,6 @@ _SHORT_BASH_DESCRIPTION = """Execute a bash command in the terminal.
 * One command at a time: You can only execute one bash command at a time. If you need to run multiple commands sequentially, you can use `&&` or `;` to chain them together."""
 
 
-def refine_prompt(prompt: str):
-    if sys.platform == 'win32':
-        return prompt.replace('bash', 'powershell')
-    return prompt
-
-
 def create_cmd_run_tool(
     use_short_description: bool = False,
 ) -> ChatCompletionToolParam:
@@ -72,8 +69,13 @@ def create_cmd_run_tool(
                         'type': 'number',
                         'description': 'Optional. Sets a hard timeout in seconds for the command execution. If not provided, the command will use the default soft timeout behavior.',
                     },
+                    'security_risk': {
+                        'type': 'string',
+                        'description': SECURITY_RISK_DESC,
+                        'enum': RISK_LEVELS,
+                    },
                 },
-                'required': ['command'],
+                'required': ['command', 'security_risk'],
             },
         ),
     )
