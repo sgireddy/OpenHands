@@ -4,27 +4,25 @@ from typing import Any, cast
 import httpx
 from pydantic import SecretStr
 
+from openhands.integrations.protocols.http_client import HTTPClient
 from openhands.integrations.service_types import (
     BaseGitService,
     RequestMethod,
     UnknownException,
     User,
 )
+from openhands.utils.http_session import httpx_verify_option
 
 
-class GitHubMixinBase(BaseGitService):
+class GitHubMixinBase(BaseGitService, HTTPClient):
     """
     Declares common attributes and method signatures used across mixins.
     """
 
     BASE_URL: str
     GRAPHQL_URL: str
-    token: SecretStr
-    refresh: bool
-    external_auth_id: str | None
-    base_domain: str | None
 
-    async def _get_github_headers(self) -> dict:
+    async def _get_headers(self) -> dict:
         """Retrieve the GH Token from settings store to construct the headers."""
         if not self.token:
             latest_token = await self.get_latest_token()
@@ -46,8 +44,8 @@ class GitHubMixinBase(BaseGitService):
         method: RequestMethod = RequestMethod.GET,
     ) -> tuple[Any, dict]:  # type: ignore[override]
         try:
-            async with httpx.AsyncClient() as client:
-                github_headers = await self._get_github_headers()
+            async with httpx.AsyncClient(verify=httpx_verify_option()) as client:
+                github_headers = await self._get_headers()
 
                 # Make initial request
                 response = await self.execute_request(
@@ -61,7 +59,7 @@ class GitHubMixinBase(BaseGitService):
                 # Handle token refresh if needed
                 if self.refresh and self._has_token_expired(response.status_code):
                     await self.get_latest_token()
-                    github_headers = await self._get_github_headers()
+                    github_headers = await self._get_headers()
                     response = await self.execute_request(
                         client=client,
                         url=url,
@@ -86,8 +84,8 @@ class GitHubMixinBase(BaseGitService):
         self, query: str, variables: dict[str, Any]
     ) -> dict[str, Any]:
         try:
-            async with httpx.AsyncClient() as client:
-                github_headers = await self._get_github_headers()
+            async with httpx.AsyncClient(verify=httpx_verify_option()) as client:
+                github_headers = await self._get_headers()
 
                 response = await client.post(
                     self.GRAPHQL_URL,
