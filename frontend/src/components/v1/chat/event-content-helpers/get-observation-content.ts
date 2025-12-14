@@ -71,7 +71,18 @@ const getTerminalObservationContent = (
     content = `${content.slice(0, MAX_CONTENT_LENGTH)}...`;
   }
 
-  return `Output:\n\`\`\`sh\n${content.trim() || i18n.t("OBSERVATION$COMMAND_NO_OUTPUT")}\n\`\`\``;
+  // Build the output string
+  let output = "";
+
+  // Display the command if available
+  if (observation.command) {
+    output += `Command: \`${observation.command}\`\n\n`;
+  }
+
+  // Display the output
+  output += `Output:\n\`\`\`sh\n${content.trim() || i18n.t("OBSERVATION$COMMAND_NO_OUTPUT")}\n\`\`\``;
+
+  return output;
 };
 
 // Tool Observations
@@ -80,13 +91,24 @@ const getBrowserObservationContent = (
 ): string => {
   const { observation } = event;
 
+  // Extract text content from the observation
+  const textContent =
+    "content" in observation && Array.isArray(observation.content)
+      ? observation.content
+          .filter((c) => c.type === "text")
+          .map((c) => c.text)
+          .join("\n")
+      : observation.output || "";
+
   let contentDetails = "";
 
-  if ("error" in observation && observation.error) {
-    contentDetails += `**Error:**\n${observation.error}\n\n`;
+  if (observation.error) {
+    contentDetails += `**Error:**\n${observation.error}`;
+  } else if (textContent) {
+    contentDetails += `**Output:**\n${textContent}`;
+  } else {
+    contentDetails += "Browser action completed successfully.";
   }
-
-  contentDetails += `**Output:**\n${observation.output}`;
 
   if (contentDetails.length > MAX_CONTENT_LENGTH) {
     contentDetails = `${contentDetails.slice(0, MAX_CONTENT_LENGTH)}...(truncated)`;
@@ -175,7 +197,22 @@ const getFinishObservationContent = (
   event: ObservationEvent<FinishObservation>,
 ): string => {
   const { observation } = event;
-  return observation.message || "";
+
+  // Extract text content from the observation
+  const textContent = observation.content
+    .filter((c) => c.type === "text")
+    .map((c) => c.text)
+    .join("\n");
+
+  let content = "";
+
+  if (observation.is_error) {
+    content += `**Error:**\n${textContent}`;
+  } else {
+    content += textContent;
+  }
+
+  return content;
 };
 
 export const getObservationContent = (event: ObservationEvent): string => {
