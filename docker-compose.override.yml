@@ -1,0 +1,59 @@
+# Compose override that adds a hardened ("custom_base") build of OpenHands.
+#
+# This file is committed (intentionally not gitignored) so the hardening recipe
+# is part of the repo. It does not modify the upstream `openhands` service —
+# it only adds a sibling service `openhands-hardened` whose image is layered
+# on top of `openhands:latest` via containers/app/Dockerfile.overlay.
+#
+# Typical workflow:
+#
+#   # 1. Build the upstream image (produces openhands:latest)
+#   docker compose build openhands
+#
+#   # 2. Build the hardened overlay (produces openhands:custom_base)
+#   docker compose build openhands-hardened
+#
+#   # 3. Run the hardened image:
+#   docker compose up openhands-hardened
+#
+# Or just use the helper script which automates all of this plus scanning:
+#
+#   ./scripts/fix-docker-cves.sh
+
+services:
+  openhands-hardened:
+    build:
+      context: ./
+      dockerfile: ./containers/app/Dockerfile.overlay
+      args:
+        # Source image to apply the security overlay on top of. Override at
+        # build time to point at a registry-pulled image instead, e.g.
+        #   BASE_IMAGE=docker.all-hands.dev/all-hands-ai/openhands:0.x.y
+        BASE_IMAGE: openhands:latest
+        # Whitespace-separated pip specs to upgrade inside the venv. The
+        # fix-docker-cves.sh script populates this from Docker Scout output.
+        PIP_UPGRADES: ""
+    image: openhands:custom_base
+    container_name: openhands-hardened-${DATE:-}
+    depends_on:
+      - openhands
+    environment:
+      - AGENT_SERVER_IMAGE_REPOSITORY=${AGENT_SERVER_IMAGE_REPOSITORY:-ghcr.io/openhands/agent-server}
+      - AGENT_SERVER_IMAGE_TAG=${AGENT_SERVER_IMAGE_TAG:-1.15.0-python}
+      - WORKSPACE_MOUNT_PATH=${WORKSPACE_BASE:-$PWD/workspace}
+    ports:
+      - "${HARDENED_PORT:-3001}:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ~/.openhands:/.openhands
+      - ${WORKSPACE_BASE:-$PWD/workspace}:/opt/workspace_base
+    pull_policy: build
+    stdin_open: true
+    tty: true
+    profiles:
+      # Hidden behind a profile so plain `docker compose up` still runs only
+      # the upstream service. Activate explicitly with:
+      #   docker compose --profile hardened up openhands-hardened
+      - hardened
