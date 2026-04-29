@@ -1,0 +1,73 @@
+# syntax=docker/dockerfile:1.7
+#
+# Security overlay for the OpenHands app image.
+#
+# This image is built ON TOP of the upstream image produced by
+# containers/app/Dockerfile (or pulled from a registry) and applies OS +
+# Python package security patches as additional layers, without modifying
+# any upstream files. That keeps `git pull` clean and lets us track
+# upstream's release cadence independently of CVE patches.
+#
+# Why an overlay instead of editing upstream?
+#   - Zero merge conflicts with upstream changes.
+#   - Patch is a single declarative file, easy to audit.
+#   - Works with both locally-built and registry-pulled base images.
+#   - Trivially reversible: don't build it.
+#
+# Build (manual):
+#   docker build -f containers/app/Dockerfile.overlay \
+#       --build-arg BASE_IMAGE=openhands:latest \
+#       -t openhands:custom_base .
+#
+# Build with Python package bumps (whitespace-separated pip specs):
+#   docker build -f containers/app/Dockerfile.overlay \
+#       --build-arg BASE_IMAGE=openhands:latest \
+#       --build-arg PIP_UPGRADES="urllib3==2.5.0 setuptools==80.0.0" \
+#       -t openhands:custom_base .
+#
+# Build via docker-compose (uses docker-compose.override.yml in repo root):
+#   docker compose build openhands-hardened
+
+ARG BASE_IMAGE=openhands:latest
+FROM ${BASE_IMAGE}
+
+# Re-declare ARG so it's visible after FROM (Dockerfile scoping rules).
+ARG BASE_IMAGE
+ARG PIP_UPGRADES=""
+
+LABEL org.opencontainers.image.title="openhands-hardened" \
+      org.opencontainers.image.description="Security overlay over ${BASE_IMAGE}: OS + Python CVE patches." \
+      org.opencontainers.image.base.name="${BASE_IMAGE}"
+
+# --------------------------------------------------------------------------- #
+# OS package security upgrades                                                #
+# --------------------------------------------------------------------------- #
+# Updates dpkg's status DB so vulnerability scanners (Scout, Trivy) detect
+# the patched versions. Old files in lower layers are shadowed but harmless.
+USER root
+RUN apt-get update -y \
+    && apt-get -y upgrade \
+    && apt-get -y autoremove --purge \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# --------------------------------------------------------------------------- #
+# Python package upgrades inside the existing venv                            #
+# --------------------------------------------------------------------------- #
+# The upstream image owns /app/.venv as user "openhands" (see
+# containers/app/Dockerfile). We must run pip as that user so the venv
+# metadata is updated correctly. Skipped entirely when PIP_UPGRADES is empty
+# so this layer is essentially free for OS-only patch builds.
+USER openhands
+RUN if [ -n "$PIP_UPGRADES" ]; then \
+        echo ">>> Upgrading Python packages: $PIP_UPGRADES" \
+        && python -m pip install --no-cache-dir --upgrade $PIP_UPGRADES \
+        && python -m pip cache purge >/dev/null 2>&1 || true ; \
+    else \
+        echo ">>> No PIP_UPGRADES specified; skipping Python package upgrades." ; \
+    fi
+
+# Match upstream's runtime expectations (entrypoint runs as root and drops
+# privileges itself; see containers/app/entrypoint.sh).
+USER root
+WORKDIR /app
